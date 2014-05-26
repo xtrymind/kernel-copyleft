@@ -30,10 +30,10 @@
 
 #include "power.h"
 
-const char *const pm_states[PM_SUSPEND_MAX] = {
-	[PM_SUSPEND_FREEZE]	= "freeze",
-	[PM_SUSPEND_STANDBY]	= "standby",
-	[PM_SUSPEND_MEM]	= "mem",
+struct pm_sleep_state pm_states[PM_SUSPEND_MAX] = {
+	[PM_SUSPEND_FREEZE] = { "freeze", PM_SUSPEND_FREEZE },
+	[PM_SUSPEND_STANDBY] = { "standby", PM_SUSPEND_STANDBY },
+	[PM_SUSPEND_MEM] = { "mem", PM_SUSPEND_MEM },
 };
 
 static const struct platform_suspend_ops *suspend_ops;
@@ -339,20 +339,20 @@ static int enter_state(suspend_state_t state)
 	printk("done.\n");
 
 //CORE-KC-DBG_SUSPEND_RESUME-00-	pr_debug("PM: Preparing system for %s sleep\n", pm_states[state]);
-	pr_info("PM: Preparing system for %s sleep\n", pm_states[state]);	//CORE-KC-DBG_SUSPEND_RESUME-00+
+	pr_info("PM: Preparing system for %s sleep\n", pm_states[state].label);	//CORE-KC-DBG_SUSPEND_RESUME-00+
 	error = suspend_prepare(state);
 	if (error) {
-		pr_info("PM: suspend_prepare error = %d for %s sleep\n", error, pm_states[state]);	//CORE-KC-DBG_SUSPEND_RESUME-00+
+		pr_info("PM: suspend_prepare error = %d for %s sleep\n", error, pm_states[state].label);	//CORE-KC-DBG_SUSPEND_RESUME-00+
 		goto Unlock;
 	}
 
 	if (suspend_test(TEST_FREEZER)) {
-		pr_info("PM: suspend_test for %s sleep\n", pm_states[state]);	//CORE-KC-DBG_SUSPEND_RESUME-00+	
+		pr_info("PM: suspend_test for %s sleep\n", pm_states[state].label);	//CORE-KC-DBG_SUSPEND_RESUME-00+	
 		goto Finish;
 	}
 
 //CORE-KC-DBG_SUSPEND_RESUME-00-	pr_debug("PM: Entering %s sleep\n", pm_states[state]);
-	pr_info("PM: Entering %s sleep\n", pm_states[state]);	//CORE-KC-DBG_SUSPEND_RESUME-00+	
+	pr_info("PM: Entering %s sleep\n", pm_states[state].label);	//CORE-KC-DBG_SUSPEND_RESUME-00+	
 	pm_restrict_gfp_mask();
 	error = suspend_devices_and_enter(state);
 	pm_restore_gfp_mask();
