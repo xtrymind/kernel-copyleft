@@ -1168,10 +1168,13 @@ static int check_version(Elf_Shdr *sechdrs,
 	unsigned int i, num_versions;
 	struct modversion_info *versions;
 
-	/* ignore modversion for texfat */
+	/* ignore magic version */
 	if(!strncmp("texfat", mod->name, 6))
 		return 0;
 
+	if(!strncmp("core_ctl", mod->name, 8))
+		return 1;
+ 
 	/* Exporting module didn't supply crcs?  OK, we're already tainted. */
 	if (!crc)
 		return 1;
