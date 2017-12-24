@@ -978,6 +978,7 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	unsigned int hash;
 	struct unix_address *addr;
 	struct hlist_head *list;
+	struct path path = { NULL, NULL };
 
 	err = -EINVAL;
 	if (sunaddr->sun_family != AF_UNIX)
@@ -993,9 +994,20 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		goto out;
 	addr_len = err;
 
+	if (sun_path[0]) {
+		umode_t mode = S_IFSOCK |
+		       (SOCK_INODE(sock)->i_mode & ~current_umask());
+		err = unix_mknod(sun_path, mode, &path);
+		if (err) {
+			if (err == -EEXIST)
+				err = -EADDRINUSE;
+			goto out;
+		}
+	}
+
 	err = mutex_lock_interruptible(&u->readlock);
 	if (err)
-		goto out;
+		goto out_put;
 
 	err = -EINVAL;
 	if (u->addr)
@@ -1048,6 +1060,9 @@ out_unlock:
 	spin_unlock(&unix_table_lock);
 out_up:
 	mutex_unlock(&u->readlock);
+out_put:
+	if (err)
+		path_put(&path);
 out:
 	return err;
 }
