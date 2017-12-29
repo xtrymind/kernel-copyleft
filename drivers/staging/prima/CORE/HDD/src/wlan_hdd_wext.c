@@ -964,7 +964,7 @@ VOS_STATUS wlan_hdd_get_frame_logs(hdd_adapter_t *pAdapter, v_U8_t flag)
    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    if (!pHddCtx->mgmt_frame_logging)
    {
-      hddLog(VOS_TRACE_LEVEL_DEBUG,"%s: Frame Logging not init!", __func__);
+      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Frame Logging not init!", __func__);
       return VOS_STATUS_E_AGAIN;
    }
 
@@ -1460,7 +1460,7 @@ v_U8_t* wlan_hdd_get_vendor_oui_ie_ptr(v_U8_t *oui, v_U8_t oui_size, v_U8_t *ie,
                     eid,elem_len,left);
             return NULL;
         }
-        if (elem_id == eid)
+        if ((elem_id == eid) && (elem_len >= oui_size))
         {
             if(memcmp( &ptr[2], oui, oui_size)==0)
                 return ptr;
@@ -2390,6 +2390,13 @@ static int __iw_set_genie(struct net_device *dev,
         hddLog(VOS_TRACE_LEVEL_INFO, "%s: IE[0x%X], LEN[%d]",
             __func__, elementId, eLen);
 
+        if (remLen < eLen) {
+            hddLog(LOGE, "Remaining len: %u less than ie len: %u",
+                   remLen, eLen);
+            ret = -EINVAL;
+            goto exit;
+        }
+
         switch ( elementId )
          {
             case IE_EID_VENDOR:
@@ -2472,8 +2479,11 @@ static int __iw_set_genie(struct net_device *dev,
                 hddLog (LOGE, "%s Set UNKNOWN IE %X",__func__, elementId);
                 goto exit;
     }
-        genie += eLen;
         remLen -= eLen;
+
+        /* Move genie only if next element is present */
+        if (remLen >= 2)
+            genie += eLen;
     }
 
 exit:
@@ -3847,6 +3857,9 @@ static void parse_Bufferforpkt(tSirpkt80211 *pkt, u8 *pBuffer, u16 len)
     length = getByte(&temp);
     length += getByte(&temp) << 8;
     hddLog(VOS_TRACE_LEVEL_INFO,"Payload length : %d", length);
+
+    if (length >= WLAN_DISA_MAX_PAYLOAD_SIZE)
+        length = WLAN_DISA_MAX_PAYLOAD_SIZE;
 
     pkt->data.length = length;
 
@@ -6615,7 +6628,6 @@ static int __iw_get_char_setnone(struct net_device *dev,
    *And currently it only checks P2P_CLIENT adapter.
    *P2P_DEVICE and P2P_GO have not been added as of now.
 */
-#ifdef TRACE_RECORD
         case WE_GET_STATES:
         {
             int buf = 0, len = 0;
@@ -6752,7 +6764,6 @@ static int __iw_get_char_setnone(struct net_device *dev,
             wrqu->data.length = strlen(extra)+1;
             break;
         }
-#endif
 
         case WE_GET_CFG:
         {
@@ -10858,6 +10869,10 @@ static const struct iw_priv_args we_private_args[] = {
         WLAN_GET_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
         IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
+    {
+        WLAN_PRIV_SET_FTIES,
+        IW_PRIV_TYPE_CHAR | MAX_FTIE_SIZE,
+        0, "set_ft_ies"},
 };
 
 
